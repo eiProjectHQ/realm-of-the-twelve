@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realm of the Twelve: save service load test</title>
+<!-- The load-test script (brief Section 3.7 Capacity; Fixed technical rules, deliverable 4). Uploaded to the game's
+     repository as loadtest.html and run from https://realm.eiprojecthq.com/loadtest.html, so every request goes from a
+     browser at the game's own address to the save service, exactly as the game's will. Remove it from the repository
+     before launch (how_to_deploy.md).
+
+     The test (3.7): 100 simulated heroes, each saving twice every 4 minutes for 30 minutes, including sign-ins and the
+     username search. It passes if no save is lost or written to the wrong hero, 95% of saves complete within 5 seconds,
+     and every failed save succeeds on retry within 5 minutes of the end of the test. This page measures the times.
+
+     How it plays: the heroes arrive one by one over the first 4 minutes. Each creates its hero (a username search),
+     signs in on a second computer (another search), then saves every 2 minutes, from its two computers in turn, until
+     the 30 minutes are up. Alternate saves are the largest kind a real game sends (the checkpoint written straight after
+     a battle, about 5,500 characters) and the ordinary kind (about 1,500). A save that fails is sent again, unchanged,
+     until it succeeds, for up to 5 minutes after the end. At the end every hero's stored save is loaded and checked.
+
+     For a short trial run the settings can be changed in the address, e.g. loadtest.html?heroes=5&minutes=3 (also
+     gap, ramp, retry and timeout, all in seconds). A trial run never counts as the test: the verdict says so. -->
+<style>
+  :root { --ink: #1d2433; --paper: #f7f5ef; --line: #d9d4c7; --pass: #176b2c; --fail: #a3201a; --muted: #5d6475; }
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; color: var(--ink); background: var(--paper); max-width: 980px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { margin: 6px 0 12px; line-height: 1.45; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; }
+  #service-url { width: 100%; box-sizing: border-box; padding: 8px; font: 14px Consolas, monospace; }
+  button { margin: 10px 10px 0 0; padding: 9px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .settings { font-size: 14px; color: var(--muted); }
+  #live { margin-top: 16px; font: 14px Consolas, monospace; white-space: pre-wrap; background: #fff; border: 1px solid var(--line); padding: 12px; min-height: 120px; }
+  #verdict { margin-top: 16px; font-size: 20px; font-weight: 700; }
+  .pass { color: var(--pass); } .fail { color: var(--fail); }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .warn { color: var(--fail); font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Realm of the Twelve: save service load test</h1>
+<p>This runs the capacity test in the brief (Section 3.7): 100 heroes, each saving twice every 4 minutes for 30
+minutes. It takes about 36 minutes. <strong>Keep this tab in front and the laptop plugged in and awake until it
+finishes</strong>; a hidden tab slows the browser's timers and spoils the timing.</p>
+<label for="service-url">Save service address (the TEST web app, ending in /exec)</label>
+<input id="service-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+<div class="settings" id="settings"></div>
+<button id="start" type="button">Start the load test</button>
+<button id="download" type="button" disabled>Download the results</button>
+<div id="live" aria-live="polite">Not started.</div>
+<div id="verdict" role="status"></div>
+<table id="summary" hidden><tbody></tbody></table>
+
+<script>
+"use strict";
+// ------------------------------------------------------------------ settings (the brief's, unless the address changes them)
+const BRIEF = { heroes: 100, minutes: 30, gap: 120, ramp: 240, retry: 300, timeout: 30 };
+const P = Object.assign({}, BRIEF);
+const query = new URLSearchParams(location.search);
+for (const k of Object.keys(P)) if (query.has(k) && Number(query.get(k)) > 0) P[k] = Number(query.get(k));
+const TRIAL = Object.keys(BRIEF).some((k) => P[k] !== BRIEF[k]);
+const RETRY_DELAY_MS = 15000;          // a failed request is sent again after 15 seconds
+const TARGET_MS = 5000, TARGET_SHARE = 0.95;
+document.getElementById("settings").textContent =
+  P.heroes + " heroes, " + P.minutes + " minutes, a save every " + P.gap + " s per hero, heroes arriving over " + P.ramp +
+  " s, retries for up to " + P.retry + " s after the end, each request given " + P.timeout + " s" +
+  (TRIAL ? ". TRIAL SETTINGS: this run will not count as the test." : " (the brief's test).");
+
+const urlBox = document.getElementById("service-url");
+try { urlBox.value = localStorage.getItem("realmServiceUrl") || ""; } catch (e) { /* storage may be blocked */ }
+
+// ------------------------------------------------------------------ valid saves, as the game sends them (A1.5)
+const START_ROW = [60, 30, 0, 0, 15, 0, 0, 0, 0, 30, 0, 0];
+/** Save number j of a hero: odd j is the checkpoint written straight after a battle (with a full 50-village report,
+ *  the largest save a real game sends); even j is the ordinary save after the report. Each has more progress than
+ *  the one before: the battle count rises at each checkpoint, and the save number at every save. */
+function makeSave(name, j) {
+  const battles = Math.ceil(j / 2);
+  const s = {
+    fileId: "realm-of-the-twelve", version: 3, name: name, avatar: "girls_african", destiny: "Empress", mode: "standard",
+    tranche: null, level: 0, highestLevel: 0, villages: Array.from({ length: 12 }, () => START_ROW.slice()),
+    battlesCompleted: battles, questionsAnswered: 50 * battles, certificate: null, pending: null,
+    rotation: { conquest: battles, village: 0, domain: 0 }, saveNumber: j, campaignNumber: 1,
+  };
+  if (j % 2 === 1) {
+    const changes = [];
+    for (let k = 0; k < 50; k++) changes.push({ i: 1 + (k % 12), j: 1 + Math.floor(k / 12), from: "uncharted", to: "settled", before: 25, after: 30, up: true });
+    s.pending = { debrief: { focus: null, counts: { swift: 30, steady: 15, incorrect: 5 }, changes: changes, levelBefore: 0,
+      levelAfter: 0, screen: "none", discovery: null }, newLevel: 0, certificateDue: null, trancheDue: null };
+  }
+  return s;
+}
+
+// ------------------------------------------------------------------ one request, timed
+let url = "", t0 = 0;
+const requests = [];                    // every request: when, what, for whom, how long, what came back
+const now = () => performance.now() - t0;
+
+async function call(op, req, hero, j) {
+  const started = now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), P.timeout * 1000);
+  let outcome, reply = null;
+  try {
+    const res = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" },
+      body: JSON.stringify(Object.assign({ op: op }, req)), redirect: "follow", signal: controller.signal });
+    reply = await res.json();
+    outcome = reply.ok ? "ok" + (reply.result ? " " + reply.result : "") : "refused " + reply.error;
+  } catch (err) {
+    outcome = err && err.name === "AbortError" ? "no reply in " + P.timeout + " s" : "network error";
+  } finally {
+    clearTimeout(timer);
+  }
+  const ms = Math.round(now() - started);
+  requests.push({ at: Math.round(started), op: op, hero: hero ? hero.n : null, save: j || null, ms: ms, outcome: outcome });
+  return { reply: reply, ms: ms, outcome: outcome };
+}
+/** A reply worth trying again: the service was busy or went wrong, or the reply never arrived. */
+const isTransient = (r) => !r.reply || r.reply.error === "busy" || r.reply.error === "serverError";
+
+// ------------------------------------------------------------------ the heroes
+const runId = Array.from({ length: 4 }, () => "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"[Math.floor(Math.random() * 32)]).join("");
+let heroes = [], saves = [], endAt = 0, giveUpAt = 0, unexpected = [];
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const until = (t) => wait(Math.max(0, t - now()));
+
+/** Create the hero, then sign in on a second computer: both search the username column. Retried if they fail. */
+async function setUpHero(h) {
+  for (;;) {
+    const r = await call("createHero", { name: h.name, code: h.code }, h);
+    if (r.reply && r.reply.ok) { h.one = { row: r.reply.row, token: r.reply.token, name: r.reply.name }; break; }
+    if (!isTransient(r) || now() > giveUpAt) { unexpected.push(h.name + ": create hero " + r.outcome); return false; }
+    await wait(RETRY_DELAY_MS);
+  }
+  for (;;) {
+    const r = await call("signIn", { name: h.name, code: h.code }, h);
+    if (r.reply && r.reply.ok) { h.two = { row: r.reply.row, token: r.reply.token, name: r.reply.name }; break; }
+    if (!isTransient(r) || now() > giveUpAt) { unexpected.push(h.name + ": sign in " + r.outcome); return false; }
+    await wait(RETRY_DELAY_MS);
+  }
+  return true;
+}
+
+/** One save, sent until it succeeds (unchanged on a retry, as the game does), or until 5 minutes after the end. */
+async function sendSave(h, j) {
+  const rec = { hero: h.n, j: j, firstSent: now(), attempts: 0, doneAt: null, result: "lost" };
+  saves.push(rec);
+  const me = j % 2 === 1 ? h.one : h.two;
+  const text = JSON.stringify(makeSave(h.name, j));
+  for (;;) {
+    rec.attempts += 1;
+    const r = await call("save", Object.assign({ save: text }, me), h, j);
+    if (r.reply && r.reply.ok) {
+      const result = r.reply.result;
+      if (result === "saved" || result === "alreadySaved") { rec.result = result; rec.doneAt = now(); h.acked = Math.max(h.acked, j); return; }
+      if (result === "kept") {
+        const stored = JSON.parse(r.reply.save);
+        if (stored.saveNumber > j && stored.name === h.name) { rec.result = "superseded"; rec.doneAt = now(); return; }
+        rec.result = "kept wrongly"; unexpected.push(h.name + ": save " + j + " not written though the stored save is " + stored.saveNumber); return;
+      }
+    }
+    if (!isTransient(r)) { rec.result = r.outcome; unexpected.push(h.name + ": save " + j + " " + r.outcome); return; }
+    if (now() + RETRY_DELAY_MS > giveUpAt) return;                     // lost: still failing at the end of the retry window
+    await wait(RETRY_DELAY_MS);
+  }
+}
+
+async function playHero(h) {
+  await until(h.arrives);
+  if (!(await setUpHero(h))) return;
+  h.ready = true;
+  const jobs = [];
+  for (let j = 1; ; j++) {
+    const at = h.arrives + j * P.gap * 1000;
+    if (at >= endAt) break;
+    await until(at);
+    jobs.push(sendSave(h, j));                                         // saves do not wait for each other, like the game
+    h.sent = j;
+  }
+  await Promise.all(jobs);
+}
+
+/** After the retry window: every hero's stored save must be its own, with its latest acknowledged save number. */
+async function checkStored(h) {
+  if (!h.one) return { ok: false, why: "never created" };
+  for (let tries = 0; tries < 6; tries++) {
+    const r = await call("load", h.one, h);
+    if (r.reply && r.reply.ok) {
+      const s = JSON.parse(r.reply.save);
+      if (s.name !== h.name) return { ok: false, why: "holds a save for " + s.name };
+      if (s.saveNumber !== h.acked) return { ok: false, why: "holds save " + s.saveNumber + ", latest acknowledged " + h.acked };
+      return { ok: true };
+    }
+    if (!isTransient(r)) return { ok: false, why: "load " + r.outcome };
+    await wait(RETRY_DELAY_MS);
+  }
+  return { ok: false, why: "could not be loaded" };
+}
+
+// ------------------------------------------------------------------ hidden-tab watch, keeping the screen awake
+let hiddenSince = null, hiddenMs = 0, wakeLock = null;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) hiddenSince = performance.now();
+  else { if (hiddenSince !== null) hiddenMs += performance.now() - hiddenSince; hiddenSince = null; keepAwake(); }
+});
+async function keepAwake() { try { if ("wakeLock" in navigator) wakeLock = await navigator.wakeLock.request("screen"); } catch (e) { /* not available */ } }
+
+// ------------------------------------------------------------------ live progress and the verdict
+function percentile(values, share) {
+  if (values.length === 0) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  return sorted[Math.min(sorted.length - 1, Math.ceil(share * sorted.length) - 1)];
+}
+const mmss = (ms) => { const s = Math.max(0, Math.round(ms / 1000)); return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0"); };
+function completionTimes() { return saves.map((s) => (s.doneAt === null ? Infinity : Math.round(s.doneAt - s.firstSent))); }
+
+function showProgress(phase) {
+  const done = saves.filter((s) => s.doneAt !== null).length;
+  const failedAttempts = requests.filter((r) => r.op === "save" && !/^ok/.test(r.outcome)).length;
+  const times = completionTimes().filter(isFinite);
+  document.getElementById("live").textContent = [
+    phase + "   elapsed " + mmss(now()) + " of about " + mmss(giveUpAt + 60000),
+    "heroes ready: " + heroes.filter((h) => h.ready).length + " of " + heroes.length,
+    "saves sent: " + saves.length + "   completed: " + done + "   failed attempts (sent again): " + failedAttempts,
+    "time to complete a save so far: middle " + percentile(times, 0.5) + " ms, 95% within " + percentile(times, 0.95) + " ms",
+    "requests so far: " + requests.length + (hiddenMs > 0 || hiddenSince !== null ? "   WARNING: this tab has been hidden; the timing may be spoiled" : ""),
+  ].join("\n");
+}
+
+function row(label, value, ok) {
+  const tr = document.createElement("tr");
+  const a = document.createElement("td"); a.textContent = label;
+  const b = document.createElement("td"); b.textContent = value;
+  if (ok !== undefined) b.className = ok ? "pass" : "fail";
+  tr.append(a, b);
+  document.querySelector("#summary tbody").appendChild(tr);
+}
+
+let report = null;
+async function start() {
+  url = urlBox.value.trim();
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(url)) {
+    document.getElementById("verdict").textContent = "That doesn't look like a web app address: it should start https://script.google.com/macros/s/ and end /exec.";
+    return;
+  }
+  try { localStorage.setItem("realmServiceUrl", url); } catch (e) { /* fine */ }
+  document.getElementById("start").disabled = true;
+  document.getElementById("verdict").textContent = "";
+  keepAwake();
+  t0 = performance.now();
+  const startedAt = new Date();
+  endAt = P.minutes * 60000;
+  giveUpAt = endAt + P.retry * 1000;
+  heroes = Array.from({ length: P.heroes }, (_, n) => ({
+    n: n + 1, name: "LT" + runId + " " + String(n + 1).padStart(3, "0"), code: "LOAD" + String(1000 + Math.floor(Math.random() * 9000)),
+    arrives: Math.round((n / P.heroes) * P.ramp * 1000), one: null, two: null, ready: false, sent: 0, acked: 0,
+  }));
+  const ticker = setInterval(() => showProgress(now() < endAt ? "RUNNING" : "FINISHING (retries and final check)"), 1000);
+  await Promise.all(heroes.map(playHero));
+  const stored = await Promise.all(heroes.map(checkStored));
+  clearInterval(ticker);
+  showProgress("DONE");
+
+  // ---- the verdict against the brief (3.7 Capacity)
+  const times = completionTimes();
+  const within = times.filter((t) => t <= TARGET_MS).length;
+  const share = times.length ? within / times.length : 0;
+  const lost = saves.filter((s) => s.result === "lost").length;
+  const wrong = stored.filter((s) => !s.ok);
+  const retried = saves.filter((s) => s.attempts > 1);
+  const retriedOk = retried.filter((s) => s.doneAt !== null).length;
+  const finite = times.filter(isFinite);
+  const setUpOk = heroes.filter((h) => h.ready).length === heroes.length;
+  const passLost = lost === 0 && wrong.length === 0 && unexpected.length === 0 && setUpOk;
+  const passTime = share >= TARGET_SHARE;
+  const passRetry = retriedOk === retried.length;
+  const pass = passLost && passTime && passRetry;
+  const hidden = hiddenMs + (hiddenSince !== null ? performance.now() - hiddenSince : 0);
+
+  document.getElementById("verdict").className = pass ? "pass" : "fail";
+  document.getElementById("verdict").textContent = TRIAL
+    ? (pass ? "Trial run passed (trial settings: this is not the test)." : "Trial run failed (trial settings: this is not the test).")
+    : (pass ? "PASSED: the save service meets the capacity test in the brief (3.7)." : "FAILED: the save service does not meet the capacity test in the brief (3.7).");
+  document.getElementById("summary").hidden = false;
+  row("Run", "run " + runId + ", started " + startedAt.toLocaleString("en-AU") + ", " + P.heroes + " heroes, " + P.minutes + " minutes" + (TRIAL ? " (trial settings)" : ""));
+  row("Heroes created and signed in on a second computer", heroes.filter((h) => h.ready).length + " of " + heroes.length, setUpOk);
+  row("No save lost or written to the wrong hero", lost + " lost, " + wrong.length + " heroes holding the wrong save, " + unexpected.length + " unexpected replies", passLost);
+  row("95% of saves complete within 5 seconds", (share * 100).toFixed(1) + "% of " + times.length + " saves within 5 s; 95% within " + percentile(finite, 0.95) + " ms; middle " + percentile(finite, 0.5) + " ms; slowest " + (finite.length ? Math.max.apply(null, finite) : 0) + " ms", passTime);
+  row("Every failed save succeeds on retry within 5 minutes of the end", retriedOk + " of " + retried.length + " saves that needed a retry succeeded", passRetry);
+  row("Requests", requests.length + " in all; slowest single reply " + Math.max.apply(null, requests.map((r) => r.ms)) + " ms");
+  if (hidden > 1000) row("Warning", "this tab was hidden for " + mmss(hidden) + ": the browser slows hidden tabs, so the timing may be spoiled", false);
+  for (const u of unexpected.slice(0, 10)) row("Unexpected", u, false);
+  for (const w of wrong.slice(0, 10)) row("Wrong stored save", w.why, false);
+
+  report = { page: "Realm of the Twelve load test", runId: runId, startedAt: startedAt.toISOString(), settings: P, trial: TRIAL,
+    verdict: TRIAL ? "trial" : (pass ? "PASSED" : "FAILED"), hiddenMs: Math.round(hidden),
+    summary: { heroes: P.heroes, heroesReady: heroes.filter((h) => h.ready).length, saves: times.length, lost: lost,
+      wrongStored: wrong.length, unexpected: unexpected, shareWithin5s: share, p95ms: percentile(finite, 0.95),
+      medianMs: percentile(finite, 0.5), retried: retried.length, retriedOk: retriedOk, requests: requests.length },
+    saves: saves, requests: requests };
+  document.getElementById("download").disabled = false;
+}
+
+document.getElementById("start").addEventListener("click", start);
+document.getElementById("download").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify(report)], { type: "application/json" });
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(blob);
+  a.download = "Realm-load-test-" + runId + ".json";
+  document.body.appendChild(a); a.click(); a.remove();
+});
+</script>
+</body>
+</html>
