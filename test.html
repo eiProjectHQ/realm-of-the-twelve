@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realm of the Twelve: save service check</title>
+<!-- Stage 1 end-to-end check (BUILD_PLAN.md). Uploaded to the game's repository as test.html and opened at
+     https://realm.eiprojecthq.com/test.html, so the check runs from the game's own web address. It talks only to
+     the save service address typed into the box. Remove it from the repository before launch (how_to_deploy.md). -->
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; color: #1d2433; background: #f7f5ef; max-width: 980px; }
+  h1 { font-size: 22px; margin: 0 0 6px; }
+  p { margin: 6px 0 14px; line-height: 1.45; }
+  label { display: block; font-weight: 600; margin-bottom: 4px; }
+  #service-url { width: 100%; box-sizing: border-box; padding: 8px; font: 14px Consolas, monospace; }
+  button { margin-top: 10px; padding: 9px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  table { border-collapse: collapse; width: 100%; margin-top: 16px; font-size: 14px; }
+  th, td { text-align: left; padding: 6px 8px; border-bottom: 1px solid #d9d4c7; vertical-align: top; }
+  .pass { color: #176b2c; font-weight: 700; }
+  .fail { color: #a3201a; font-weight: 700; }
+  #summary { margin-top: 14px; font-size: 17px; font-weight: 700; }
+</style>
+</head>
+<body>
+<h1>Realm of the Twelve: save service check</h1>
+<p>Paste the save service's web app address (it ends in <code>/exec</code>) and press Run the check. It creates one
+test hero with a name like "Test 123456", plays through the six operations as two computers, and shows each result.
+Nothing else in the Sheet is touched.</p>
+<label for="service-url">Save service address</label>
+<input id="service-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+<button id="run-check" type="button">Run the check</button>
+<div id="summary" role="status"></div>
+<table id="results" hidden>
+  <thead><tr><th>#</th><th>Check</th><th>Result</th><th>Time</th><th>Reply</th></tr></thead>
+  <tbody></tbody>
+</table>
+
+<script>
+"use strict";
+const urlBox = document.getElementById("service-url");
+try { urlBox.value = localStorage.getItem("realmServiceUrl") || ""; } catch (e) { /* storage may be blocked */ }
+
+/** A valid Version 2 save (brief A1.5): a new Standard Mode campaign, as the game would send it. */
+function campaign(name, campaignNumber, saveNumber, battles) {
+  const row = [60, 30, 0, 0, 15, 0, 0, 0, 0, 30, 0, 0];
+  return {
+    fileId: "realm-of-the-twelve", version: 3, name: name, avatar: "girls_african", destiny: "Empress",
+    mode: "standard", tranche: null, level: 0, highestLevel: 0, villages: Array.from({ length: 12 }, () => row.slice()),
+    battlesCompleted: battles, questionsAnswered: 50 * battles, certificate: null, pending: null,
+    rotation: { conquest: 0, village: 0, domain: 0 }, saveNumber: saveNumber, campaignNumber: campaignNumber,
+  };
+}
+
+/** One request to the save service, exactly as the game sends it: a JSON body as plain text, so no pre-flight. */
+async function call(url, req) {
+  const started = performance.now();
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(req), redirect: "follow" });
+  const reply = await res.json();
+  return { reply: reply, ms: Math.round(performance.now() - started) };
+}
+
+function addRow(n, what, ok, ms, reply) {
+  const tr = document.createElement("tr");
+  const cells = [String(n), what, ok ? "PASS" : "FAIL", ms + " ms", JSON.stringify(reply).slice(0, 160)];
+  cells.forEach((text, k) => {
+    const td = document.createElement("td");
+    td.textContent = text;
+    if (k === 2) td.className = ok ? "pass" : "fail";
+    tr.appendChild(td);
+  });
+  document.querySelector("#results tbody").appendChild(tr);
+}
+
+async function runCheck() {
+  const url = urlBox.value.trim();
+  const summary = document.getElementById("summary");
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(url)) {
+    summary.textContent = "That doesn't look like a web app address: it should start https://script.google.com/macros/s/ and end /exec.";
+    return;
+  }
+  try { localStorage.setItem("realmServiceUrl", url); } catch (e) { /* fine */ }
+  document.querySelector("#results tbody").innerHTML = "";
+  document.getElementById("results").hidden = false;
+  summary.textContent = "Running...";
+
+  const name = "Test " + String(Math.floor(100000 + Math.random() * 900000));
+  const code = "TEST" + String(Math.floor(1000 + Math.random() * 9000));
+  const ctx = {};
+  const steps = [
+    ["Create a new hero", () => ({ op: "createHero", name: name, code: code }),
+      (r) => r.ok && r.existing === false && Number.isInteger(r.row) && /^[0-9a-f]{64}$/.test(r.token) && JSON.parse(r.save).noCampaign === true,
+      (r) => { ctx.one = { row: r.row, token: r.token, name: r.name }; }],
+    ["Create the same hero again (a retry) returns it", () => ({ op: "createHero", name: name.toLowerCase(), code: code.toLowerCase() }),
+      (r) => r.ok && r.existing === true && r.row === ctx.one.row],
+    ["Sign in on a second computer", () => ({ op: "signIn", name: name, code: code }),
+      (r) => r.ok && r.row === ctx.one.row, (r) => { ctx.two = { row: r.row, token: r.token, name: r.name }; }],
+    ["A wrong save code is refused", () => ({ op: "signIn", name: name, code: "WRONG123" }), (r) => !r.ok && r.error === "noMatch"],
+    ["First save of campaign 1", () => Object.assign({ op: "save", save: JSON.stringify(campaign(name, 1, 1, 0)) }, ctx.one),
+      (r) => r.ok && r.result === "saved"],
+    ["The second computer loads it", () => Object.assign({ op: "load" }, ctx.two),
+      (r) => r.ok && JSON.parse(r.save).saveNumber === 1],
+    ["A save with more progress is kept", () => Object.assign({ op: "save", save: JSON.stringify(campaign(name, 1, 2, 1)) }, ctx.two),
+      (r) => r.ok && r.result === "saved"],
+    ["A save with less progress is not written; the reply has the stored copy", () => Object.assign({ op: "save", save: JSON.stringify(campaign(name, 1, 3, 0)) }, ctx.one),
+      (r) => r.ok && r.result === "kept" && JSON.parse(r.save).battlesCompleted === 1],
+    ["The same save again is acknowledged as already saved", () => Object.assign({ op: "save", save: JSON.stringify(campaign(name, 1, 2, 1)) }, ctx.one),
+      (r) => r.ok && r.result === "alreadySaved"],
+    ["An invalid save is refused", () => Object.assign({ op: "save", save: JSON.stringify(Object.assign(campaign(name, 1, 9, 2), { avatar: "dragon" })) }, ctx.one),
+      (r) => !r.ok && r.error === "invalidSave"],
+    ["Start a new campaign on the first computer (same name, new save code)", () => Object.assign({ op: "startNewCampaign", newName: name, code: code + "X", replacing: 1 }, ctx.one),
+      (r) => r.ok && JSON.parse(r.save).noCampaign === true && JSON.parse(r.save).campaignNumber === 1],
+    ["The second computer is now signed out", () => Object.assign({ op: "load" }, ctx.two), (r) => !r.ok && r.error === "signedOut"],
+    ["The first computer finds no active campaign", () => Object.assign({ op: "load" }, ctx.one),
+      (r) => r.ok && JSON.parse(r.save).noCampaign === true],
+    ["Campaign 2's first save is accepted", () => Object.assign({ op: "save", save: JSON.stringify(campaign(name, 2, 4, 0)) }, ctx.one),
+      (r) => r.ok && r.result === "saved"],
+    ["Sign out on the first computer", () => Object.assign({ op: "signOut" }, ctx.one), (r) => r.ok],
+    ["After signing out, loading is refused", () => Object.assign({ op: "load" }, ctx.one), (r) => !r.ok && r.error === "signedOut"],
+  ];
+
+  let passed = 0;
+  const times = [];
+  for (let k = 0; k < steps.length; k++) {
+    const [what, makeRequest, check, keep] = steps[k];
+    try {
+      const { reply, ms } = await call(url, makeRequest());
+      const ok = !!check(reply);
+      if (ok && keep) keep(reply);
+      if (ok) passed++;
+      times.push(ms);
+      addRow(k + 1, what, ok, ms, reply);
+      if (!ok && k < 3) break;               // without a hero and two computers, the later checks cannot run
+    } catch (err) {
+      addRow(k + 1, what, false, "-", { error: String(err && err.message || err) });
+      break;
+    }
+  }
+  times.sort((a, b) => a - b);
+  const median = times.length ? times[Math.floor(times.length / 2)] : 0;
+  summary.textContent = passed + " of " + steps.length + " checks passed. Test hero: " + name +
+    ". Slowest reply " + (times.length ? times[times.length - 1] : 0) + " ms; middle reply " + median + " ms.";
+}
+
+document.getElementById("run-check").addEventListener("click", runCheck);
+</script>
+</body>
+</html>
