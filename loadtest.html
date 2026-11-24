@@ -60,11 +60,17 @@ const P = Object.assign({}, BRIEF);
 const query = new URLSearchParams(location.search);
 for (const k of Object.keys(P)) if (query.has(k) && Number(query.get(k)) > 0) P[k] = Number(query.get(k));
 const TRIAL = Object.keys(BRIEF).some((k) => P[k] !== BRIEF[k]);
+// Every hero must arrive early enough to save at least twice before the end (a short trial with the brief's 4-minute
+// arrival spread would otherwise have heroes arriving after the end). The brief's test is unaffected: 240 s is well
+// inside 30 minutes less two gaps.
+const RAMP_LIMIT = Math.max(0, P.minutes * 60 - 2 * P.gap);
+const RAMP_REDUCED = P.ramp > RAMP_LIMIT;
+if (RAMP_REDUCED) P.ramp = RAMP_LIMIT;
 const RETRY_DELAY_MS = 15000;          // a failed request is sent again after 15 seconds
 const TARGET_MS = 5000, TARGET_SHARE = 0.95;
 document.getElementById("settings").textContent =
   P.heroes + " heroes, " + P.minutes + " minutes, a save every " + P.gap + " s per hero, heroes arriving over " + P.ramp +
-  " s, retries for up to " + P.retry + " s after the end, each request given " + P.timeout + " s" +
+  " s" + (RAMP_REDUCED ? " (shortened to fit the run)" : "") + ", retries for up to " + P.retry + " s after the end, each request given " + P.timeout + " s" +
   (TRIAL ? ". TRIAL SETTINGS: this run will not count as the test." : " (the brief's test).");
 
 const urlBox = document.getElementById("service-url");
@@ -188,6 +194,9 @@ async function checkStored(h) {
     const r = await call("load", h.one, h);
     if (r.reply && r.reply.ok) {
       const s = JSON.parse(r.reply.save);
+      if (h.acked === 0) {     // a hero that never saved holds the "no campaign yet" record the service gave it
+        return s.noCampaign === true && s.campaignNumber === 0 ? { ok: true } : { ok: false, why: "never saved, but holds save " + s.saveNumber };
+      }
       if (s.name !== h.name) return { ok: false, why: "holds a save for " + s.name };
       if (s.saveNumber !== h.acked) return { ok: false, why: "holds save " + s.saveNumber + ", latest acknowledged " + h.acked };
       return { ok: true };
