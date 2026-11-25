@@ -1,0 +1,103 @@
+<!doctype html>
+<html lang="en-AU">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Realm of the Twelve: test heroes</title>
+<!-- For play tests only (Stage 3 on). Made by tools/make_test_heroes.js; do not edit by hand. Uploaded to the game's
+     repository as testheroes.html and opened at https://realm.eiprojecthq.com/testheroes.html. It talks only to the
+     save service address in the box, which must be the TEST one. Remove it from the repository before launch
+     (how_to_deploy.md Part 4). -->
+<style>
+  body { font-family: Segoe UI, Arial, sans-serif; margin: 24px; color: #1d2433; background: #f7f5ef; max-width: 860px; }
+  h1 { font-size: 22px; margin: 0 0 6px; } h2 { font-size: 18px; margin: 26px 0 6px; }
+  p { margin: 6px 0 12px; line-height: 1.45; }
+  label { display: block; font-weight: 600; margin: 10px 0 4px; }
+  input[type=text], input[type=url] { width: 100%; box-sizing: border-box; padding: 8px; font-size: 15px; }
+  #service-url { font: 14px Consolas, monospace; }
+  .choices label { font-weight: 400; margin: 4px 0; }
+  button { margin-top: 12px; padding: 9px 18px; font-size: 15px; font-weight: 600; cursor: pointer; }
+  .result { margin-top: 12px; padding: 10px 12px; border-radius: 6px; background: #fff; border: 1px solid #d9d4c7; white-space: pre-line; }
+  .ok { color: #176b2c; } .bad { color: #a3201a; }
+</style>
+</head>
+<body>
+<h1>Realm of the Twelve: test heroes</h1>
+<p>For play tests on the TEST save service only. Make a hero with a ready-made campaign here, then sign in to it in the game.</p>
+<label for="service-url">TEST save service address</label>
+<input id="service-url" type="url" placeholder="https://script.google.com/macros/s/.../exec" autocomplete="off">
+
+<h2>1. Make a test hero</h2>
+<label for="hero-name">Name (2 to 15 letters, numbers, spaces, hyphens or apostrophes)</label>
+<input id="hero-name" type="text" maxlength="15" autocomplete="off">
+<label for="hero-code">Save code (4 to 12 letters or numbers)</label>
+<input id="hero-code" type="text" maxlength="12" autocomplete="off">
+<div class="choices" role="radiogroup" aria-label="Campaign">
+  <label style="font-weight:600">Campaign</label>
+  <label><input type="radio" name="campaign" value="none"> No campaign yet (a new hero: the Story Introduction comes next)</label>
+  <label><input type="radio" name="campaign" value="camp" checked> Level 2, the Explorer’s Camp</label>
+  <label><input type="radio" name="campaign" value="council"> Level 4, the Council Chamber</label>
+  <label><input type="radio" name="campaign" value="hall"> Level 7, the Royal Hall, with a certificate</label>
+  <label><input type="radio" name="campaign" value="guided"> Guided Mode, Level 0 (a younger child)</label>
+  <label><input type="radio" name="campaign" value="debrief"> A battle report still due (the debrief replays on the way in)</label>
+</div>
+<button id="make" type="button">Make this hero</button>
+<div id="make-result" class="result" hidden></div>
+
+<h2>2. Sign a hero in on three other computers</h2>
+<p>Uses the name and save code above. A hero can be signed in on 3 computers at once, so this signs out every other
+computer, including the game on this one. In the game, the next Next on the parents' note then shows the signed-out message.</p>
+<button id="others" type="button">Sign in on three other computers</button>
+<div id="others-result" class="result" hidden></div>
+
+<script>
+"use strict";
+const SAVES = {"camp":{"fileId":"realm-of-the-twelve","version":3,"name":"Test Hero","avatar":"girls_east_asian","destiny":"Empress","mode":"standard","tranche":null,"level":2,"highestLevel":2,"villages":[[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25],[25,25,25,25,25,25,25,25,25,25,25,25]],"battlesCompleted":23,"questionsAnswered":720,"certificate":null,"pending":null,"rotation":{"conquest":0,"village":0,"domain":0},"saveNumber":1,"campaignNumber":1},"council":{"fileId":"realm-of-the-twelve","version":3,"name":"Test Hero","avatar":"boys_african","destiny":"Emperor","mode":"standard","tranche":null,"level":4,"highestLevel":4,"villages":[[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45],[45,45,45,45,45,45,45,45,45,45,45,45]],"battlesCompleted":43,"questionsAnswered":1320,"certificate":null,"pending":null,"rotation":{"conquest":0,"village":0,"domain":0},"saveNumber":1,"campaignNumber":1},"hall":{"fileId":"realm-of-the-twelve","version":3,"name":"Test Hero","avatar":"girls_south_asian","destiny":"Empress","mode":"standard","tranche":null,"level":7,"highestLevel":7,"villages":[[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80],[80,80,80,80,80,80,80,80,80,80,80,80]],"battlesCompleted":73,"questionsAnswered":2220,"certificate":{"tier":"standard","title":"Empress","name":"Test Hero","date":"25 November 2026"},"pending":null,"rotation":{"conquest":0,"village":0,"domain":0},"saveNumber":1,"campaignNumber":1},"guided":{"fileId":"realm-of-the-twelve","version":3,"name":"Test Hero","avatar":"boys_european","destiny":"Emperor","mode":"guided","tranche":1,"level":0,"highestLevel":0,"villages":[[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0],[20,10,0,0,0,0,0,0,0,10,0,0]],"battlesCompleted":3,"questionsAnswered":120,"certificate":null,"pending":null,"rotation":{"conquest":0,"village":0,"domain":0},"saveNumber":1,"campaignNumber":1},"debrief":{"fileId":"realm-of-the-twelve","version":3,"name":"Test Hero","avatar":"boys_south_asian","destiny":"Emperor","mode":"standard","tranche":null,"level":2,"highestLevel":2,"villages":[[25,25,40,25,25,25,25,25,25,25,25,25],[25,25,25,55,25,25,25,25,25,25,25,25],[25,25,40,25,25,25,25,25,25,25,25,25],[25,25,25,55,25,25,25,25,25,25,25,25],[25,25,40,25,25,25,25,25,25,25,25,25],[25,25,25,40,25,25,25,25,25,25,25,25],[25,25,45,25,25,25,25,25,25,25,25,25],[25,25,25,30,25,25,25,25,25,25,25,25],[25,25,45,25,25,25,25,25,25,25,25,25],[25,25,25,30,25,25,25,25,25,25,25,25],[25,25,45,25,25,25,25,25,25,25,25,25],[25,25,25,45,25,25,25,25,25,25,25,25]],"battlesCompleted":24,"questionsAnswered":750,"certificate":null,"pending":{"debrief":{"focus":{"kind":"domain","j":3},"counts":{"swift":24,"steady":0,"incorrect":6},"changes":[{"i":1,"j":3,"from":"discovered","to":"outpost","before":25,"after":40,"up":true},{"i":2,"j":4,"from":"discovered","to":"outpost","before":25,"after":55,"up":true},{"i":3,"j":3,"from":"discovered","to":"outpost","before":25,"after":40,"up":true},{"i":4,"j":4,"from":"discovered","to":"outpost","before":25,"after":55,"up":true},{"i":5,"j":3,"from":"discovered","to":"outpost","before":25,"after":40,"up":true},{"i":6,"j":4,"from":"discovered","to":"outpost","before":25,"after":40,"up":true},{"i":7,"j":3,"from":"discovered","to":"outpost","before":25,"after":45,"up":true},{"i":9,"j":3,"from":"discovered","to":"outpost","before":25,"after":45,"up":true},{"i":11,"j":3,"from":"discovered","to":"outpost","before":25,"after":45,"up":true},{"i":12,"j":4,"from":"discovered","to":"outpost","before":25,"after":45,"up":true}],"levelBefore":2,"levelAfter":2,"screen":"none","discovery":null},"newLevel":2,"certificateDue":null,"trancheDue":null},"rotation":{"conquest":0,"village":0,"domain":0},"saveNumber":1,"campaignNumber":1}};
+const urlBox = document.getElementById("service-url");
+try { urlBox.value = localStorage.getItem("realmServiceUrl") || ""; } catch (e) { /* storage may be blocked */ }
+
+async function call(req) {
+  const url = urlBox.value.trim();
+  if (!/^https:\/\/script\.google\.com\/macros\/s\/[^/]+\/exec$/.test(url)) throw new Error("The address should start https://script.google.com/macros/s/ and end /exec.");
+  try { localStorage.setItem("realmServiceUrl", url); } catch (e) { /* fine */ }
+  const res = await fetch(url, { method: "POST", headers: { "Content-Type": "text/plain;charset=utf-8" }, body: JSON.stringify(req), redirect: "follow" });
+  return res.json();
+}
+function show(id, ok, text) { const el = document.getElementById(id); el.hidden = false; el.className = "result " + (ok ? "ok" : "bad"); el.textContent = text; }
+const name = () => document.getElementById("hero-name").value;
+const code = () => document.getElementById("hero-code").value;
+
+document.getElementById("make").addEventListener("click", async () => {
+  const choice = document.querySelector("input[name=campaign]:checked").value;
+  try {
+    show("make-result", true, "Working...");
+    const r = await call({ op: "createHero", name: name(), code: code() });
+    if (!r.ok) { show("make-result", false, "The save service said no: " + r.error + (r.error === "nameTaken" ? " (another hero has that name; pick another)" : "")); return; }
+    const rec = JSON.parse(r.save);
+    if (r.existing) { show("make-result", false, "A hero called " + r.name + " already exists with that save code. Pick a new name to make a fresh test hero."); return; }
+    if (choice !== "none") {
+      const save = JSON.parse(JSON.stringify(SAVES[choice]));
+      save.name = r.name;
+      if (save.certificate) save.certificate.name = r.name;
+      if (save.pending && save.pending.certificateDue) save.pending.certificateDue.name = r.name;
+      save.campaignNumber = rec.campaignNumber + 1; save.saveNumber = rec.saveNumber + 1;
+      const w = await call({ op: "save", row: r.row, token: r.token, name: r.name, save: JSON.stringify(save) });
+      if (!w.ok || w.result !== "saved") { show("make-result", false, "The hero was made, but its campaign was not stored: " + JSON.stringify(w)); return; }
+    }
+    show("make-result", true, "Made " + r.name + " (row " + r.row + ").\nIn the game: Enter the Realm, Next, then sign in as " + r.name + " with save code " + code().trim().toUpperCase() + ".");
+  } catch (err) { show("make-result", false, "Could not reach the save service: " + (err && err.message || err)); }
+});
+
+document.getElementById("others").addEventListener("click", async () => {
+  try {
+    show("others-result", true, "Working...");
+    for (let k = 1; k <= 3; k++) {
+      const r = await call({ op: "signIn", name: name(), code: code() });
+      if (!r.ok) { show("others-result", false, "Sign-in " + k + " was refused: " + r.error); return; }
+    }
+    show("others-result", true, "Signed in on three other computers. Every other computer, including the game on this one, is now signed out.");
+  } catch (err) { show("others-result", false, "Could not reach the save service: " + (err && err.message || err)); }
+});
+</script>
+</body>
+</html>
