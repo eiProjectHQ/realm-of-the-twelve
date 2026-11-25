@@ -4507,7 +4507,9 @@ const Game = (function () {
 
     /** Sign In (A2.7). Resolves with the inline message to show, or "" once the game has moved on. */
     async signIn(name, code) {
-      if (RealmLogic.usernameError(name) || RealmLogic.saveCodeError(code)) return NO_MATCH;   // no hero can have them
+      if (RealmLogic.usernameError(name)) return NO_MATCH;          // no hero can have this name
+      // Any save code goes to the save service, even one that breaks the save code rules: it is still a wrong save
+      // code for that username and counts towards the lock (3.7).
       const r = await Realm.call("signIn", { name: RealmLogic.cleanUsername(name), code: RealmLogic.cleanSaveCode(code) });
       if (r.ok) {
         Storage.setSignedIn(r.reply.row, r.reply.name, r.reply.token);
