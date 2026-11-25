@@ -2990,7 +2990,9 @@ window.Screens = Screens;
       b.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); go(); } });
       b.addEventListener("input", () => { if (error.textContent) show(""); });
     });
-    setTimeout(() => (nameBox.value ? codeBox : nameBox).focus({ preventScroll: true }), 70);
+    setTimeout(() => {                          // not while a message is showing over the screen (it takes the focus)
+      if (document.getElementById("dialog-layer").hidden) (nameBox.value ? codeBox : nameBox).focus({ preventScroll: true });
+    }, 70);
   };
 
   /** "Can't reach the Realm" (3.7): entering the Realm needs the save service. Try Again repeats what was asked. */
@@ -4465,7 +4467,7 @@ const Game = (function () {
 
   // The messages of 3.7 and A2.7, word for word.
   const NO_MATCH = "That name and save code don’t match.";
-  const TOO_MANY_TRIES = "Too many tries. Please wait 15 minutes and try again.";
+  const TOO_MANY_TRIES = "There have been too many incorrect sign-in attempts. Please wait 15 minutes and try again.";
   const SIGNED_OUT = "This computer has been signed out. Please sign in again.";
 
   const game = {
@@ -4499,7 +4501,7 @@ const Game = (function () {
     async enterSignedIn(who) {
       const r = await Realm.call("load", Realm.as(who));
       if (r.ok) { game.enterWith(r.reply.save); return; }
-      if (r.refused === "signedOut") { game.signedOutHere(); return; }
+      if (r.refused === "signedOut") { game.signedOutHere(who); return; }
       Screens.cantReach(() => game.enterSignedIn(who));      // unreachable, too busy, or anything unexpected
     },
 
@@ -4521,13 +4523,17 @@ const Game = (function () {
       return "";
     },
 
-    /** The save service no longer knows this computer (Sign Out, a new save code chosen elsewhere, or a fourth
-     *  computer signed in; 3.7). The hero's browser save stays under its row for the next sign-in here. */
-    signedOutHere() {
+    /** The save service no longer knows this computer (Sign Out elsewhere, a new save code chosen elsewhere, or a
+     *  fourth computer signed in; 3.7): the message, then the Sign In screen with the hero's name already filled in
+     *  (A10). The hero's browser save stays under its row for the next sign-in here. */
+    signedOutHere(who) {
       Storage.clearSignedIn();
       game.state = null;
-      Screens.title();
-      UI.messageDialog(null, [SIGNED_OUT]);
+      Screens.signIn({ name: who.name });
+      UI.messageDialog(null, [SIGNED_OUT]).then(() => {
+        const code = document.getElementById("signin-code");
+        if (code) code.focus();                    // only the save code is needed
+      });
     },
 
     /** Create a New Hero (A2.7): the Story Introduction, then Profile Setup (A2.8; the hero itself is created at
