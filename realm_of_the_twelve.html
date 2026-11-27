@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Realm of the Twelve</title>
-<!-- Realm of the Twelve — A Times Tables Adventure. Version 2.0 (Stage 5 build), built 26 November 2026.
+<!-- Realm of the Twelve — A Times Tables Adventure. Version 2.0 (Stage 5 build), built 27 November 2026.
      One self-contained file: all styles, code and painted images are inside it (brief, Fixed technical rules).
      It talks to two addresses only: its own save service (3.7) and the parent panel page (A2.7). -->
 <style>
@@ -887,9 +887,10 @@ button { font: inherit; }
 /* View Certificate: a fixed-width button centred in Campaign Progress (Indy, 14 Oct: it sat off-centre on Windows) */
 .record-buttons.single { display: block; margin: 10px 0 0; }
 .record-buttons.single .record-btn { display: flex; width: 330px; min-width: 0; margin: 0 auto; box-sizing: border-box; }
-/* A2.13 (Version 2): the save status beneath Sign Out, entered by hand like the rest of the record */
-.record-save-status { margin: 6px 0 0; text-align: center; line-height: 1.2; }
-.record-save-status .hand { font-size: 25px; white-space: nowrap; }
+/* A2.13 (Version 2, B2): the save status is the first entry of Progress Management, above Sign Out, laid out like the other entries */
+.record-section.rec-manage .record-label { width: 80px; }
+.record-section.rec-manage > .record-row { min-height: 32px; margin: 0 6px 6px; }
+.record-section.rec-manage > .record-row .hand { line-height: 1.12; }
 .btn.record-btn { min-width: 330px; padding: 6px 26px 7px; font-size: 20px; letter-spacing: .07em; color: var(--gold-light); border-radius: 8px;
   background: linear-gradient(180deg, #3463d6 0%, var(--royal) 45%, var(--navy) 100%); border: 2.5px solid var(--gold);
   box-shadow: 0 0 0 1.5px var(--navy-deep), 0 4px 10px rgba(0,0,0,.3); text-shadow: 0 1px 0 #5c3d08; }
@@ -1118,7 +1119,7 @@ const ASSETS = {"avatar_girls_L0_african":"data:image/webp;base64,UklGRvohAQBXRU
 const ASSET_SIZES = {"avatar_girls_L0_african":{"w":512,"h":955,"box":[44,172,415,940]},"avatar_girls_L0_south_asian":{"w":512,"h":955,"box":[37,179,429,940]},"avatar_girls_L0_european":{"w":512,"h":955,"box":[25,176,424,940]},"avatar_girls_L0_east_asian":{"w":512,"h":955,"box":[73,184,445,940]},"avatar_girls_L1_african":{"w":512,"h":955,"box":[49,180,416,940]},"avatar_girls_L1_south_asian":{"w":512,"h":955,"box":[50,184,423,940]},"avatar_girls_L1_european":{"w":512,"h":955,"box":[27,172,423,940]},"avatar_girls_L1_east_asian":{"w":512,"h":955,"box":[65,183,442,940]},"avatar_girls_L2_african":{"w":512,"h":955,"box":[45,172,416,940]},"avatar_girls_L2_south_asian":{"w":512,"h":955,"box":[49,190,427,940]},"avatar_girls_L2_european":{"w":512,"h":955,"box":[16,173,426,940]},"avatar_girls_L2_east_asian":{"w":512,"h":955,"box":[63,183,440,940]},"avatar_girls_L3_african":{"w":512,"h":955,"box":[41,180,427,940]},"avatar_girls_L3_south_asian":{"w":512,"h":955,"box":[44,190,427,940]},"avatar_girls_L3_european":{"w":512,"h":955,"box":[18,177,430,940]},"avatar_girls_L3_east_asian":{"w":512,"h":955,"box":[53,187,441,940]},"avatar_girls_L4_african":{"w":512,"h":955,"box":[38,182,441,940]},"avatar_girls_L4_south_asian":{"w":512,"h":955,"box":[48,191,438,940]},"avatar_girls_L4_european":{"w":512,"h":955,"box":[13,174,439,940]},"avatar_girls_L4_east_asian":{"w":512,"h":955,"box":[49,186,441,940]},"avatar_girls_L5_african":{"w":512,"h":955,"box":[74,203,416,940]},"avatar_girls_L5_south_asian":{"w":512,"h":955,"box":[78,191,416,940]},"avatar_girls_L5_european":{"w":512,"h":955,"box":[33,176,424,940]},"avatar_girls_L5_east_asian":{"w":512,"h":955,"box":[79,189,417,940]},"avatar_girls_L6_african":{"w":512,"h":955,"box":[79,192,414,940]},"avatar_girls_L6_south_asian":{"w":512,"h":955,"box":[77,163,416,940]},"avatar_girls_L6_european":{"w":512,"h":955,"box":[32,150,411,940]},"avatar_girls_L6_east_asian":{"w":512,"h":955,"box":[83,159,421,940]},"avatar_girls_L7_african":{"w":512,"h":955,"box":[65,128,421,940]},"avatar_girls_L7_south_asian":{"w":512,"h":955,"box":[63,112,422,940]},"avatar_girls_L7_european":{"w":512,"h":955,"box":[31,74,431,940]},"avatar_girls_L7_east_asian":{"w":512,"h":955,"box":[61,73,435,940]},"avatar_girls_L8_african":{"w":512,"h":955,"box":[55,127,467,939]},"avatar_girls_L8_south_asian":{"w":512,"h":955,"box":[63,95,441,940]},"avatar_girls_L8_european":{"w":512,"h":955,"box":[32,56,460,940]},"avatar_girls_L8_east_asian":{"w":512,"h":955,"box":[59,54,446,940]},"avatar_boys_L0_african":{"w":512,"h":955,"box":[68,168,436,940]},"avatar_boys_L0_south_asian":{"w":512,"h":955,"box":[41,161,417,940]},"avatar_boys_L0_european":{"w":512,"h":955,"box":[58,166,448,940]},"avatar_boys_L0_east_asian":{"w":512,"h":955,"box":[56,157,430,940]},"avatar_boys_L1_african":{"w":512,"h":955,"box":[76,178,435,940]},"avatar_boys_L1_south_asian":{"w":512,"h":955,"box":[47,168,425,940]},"avatar_boys_L1_european":{"w":512,"h":955,"box":[64,178,446,939]},"avatar_boys_L1_east_asian":{"w":512,"h":955,"box":[57,162,426,939]},"avatar_boys_L2_african":{"w":512,"h":955,"box":[89,175,433,940]},"avatar_boys_L2_south_asian":{"w":512,"h":955,"box":[58,167,414,940]},"avatar_boys_L2_european":{"w":512,"h":955,"box":[76,183,444,940]},"avatar_boys_L2_east_asian":{"w":512,"h":955,"box":[70,169,422,940]},"avatar_boys_L3_african":{"w":512,"h":955,"box":[88,173,438,939]},"avatar_boys_L3_south_asian":{"w":512,"h":955,"box":[60,172,419,940]},"avatar_boys_L3_european":{"w":512,"h":955,"box":[75,185,442,939]},"avatar_boys_L3_east_asian":{"w":512,"h":955,"box":[68,169,423,941]},"avatar_boys_L4_african":{"w":512,"h":955,"box":[97,172,426,940]},"avatar_boys_L4_south_asian":{"w":512,"h":955,"box":[79,177,409,940]},"avatar_boys_L4_european":{"w":512,"h":955,"box":[93,183,418,940]},"avatar_boys_L4_east_asian":{"w":512,"h":955,"box":[85,169,411,940]},"avatar_boys_L5_african":{"w":512,"h":955,"box":[75,167,441,940]},"avatar_boys_L5_south_asian":{"w":512,"h":955,"box":[56,177,422,940]},"avatar_boys_L5_european":{"w":512,"h":955,"box":[71,189,437,940]},"avatar_boys_L5_east_asian":{"w":512,"h":955,"box":[69,175,426,940]},"avatar_boys_L6_african":{"w":512,"h":955,"box":[80,122,442,940]},"avatar_boys_L6_south_asian":{"w":512,"h":955,"box":[59,130,421,940]},"avatar_boys_L6_european":{"w":512,"h":955,"box":[81,140,449,940]},"avatar_boys_L6_east_asian":{"w":512,"h":955,"box":[73,130,424,940]},"avatar_boys_L7_african":{"w":512,"h":955,"box":[85,60,441,940]},"avatar_boys_L7_south_asian":{"w":512,"h":955,"box":[64,72,421,940]},"avatar_boys_L7_european":{"w":512,"h":955,"box":[86,85,443,940]},"avatar_boys_L7_east_asian":{"w":512,"h":955,"box":[78,72,424,940]},"avatar_boys_L8_african":{"w":512,"h":955,"box":[64,22,488,941]},"avatar_boys_L8_south_asian":{"w":512,"h":955,"box":[62,28,446,940]},"avatar_boys_L8_european":{"w":512,"h":955,"box":[71,45,470,940]},"avatar_boys_L8_east_asian":{"w":512,"h":955,"box":[60,59,464,940]},"quill_pose_1":{"w":401,"h":572,"box":[21,15,379,559]},"quill_pose_2":{"w":401,"h":572,"box":[13,16,388,559]},"quill_pose_3":{"w":401,"h":572,"box":[27,15,373,559]},"quill_pose_4":{"w":401,"h":572,"box":[21,13,380,559]},"map_terrain":{"w":1228,"h":1191,"box":null},"map_water":{"w":1228,"h":1191,"box":null},"cert_border_light":{"w":1492,"h":1055,"box":null},"cert_border_grand":{"w":1492,"h":1055,"box":null},"bg_title":{"w":1671,"h":941,"box":null},"story_1":{"w":1672,"h":941,"box":null},"story_2":{"w":1672,"h":941,"box":null},"story_3":{"w":1672,"h":941,"box":null},"story_4":{"w":1672,"h":941,"box":null},"story_5":{"w":1672,"h":941,"box":null},"story_6":{"w":1672,"h":940,"box":null},"bg_menu_camp":{"w":1672,"h":941,"box":null},"bg_menu_council":{"w":1672,"h":941,"box":null},"bg_menu_hall":{"w":1672,"h":941,"box":null},"bg_battle":{"w":1672,"h":941,"box":null},"bg_debrief":{"w":1672,"h":941,"box":null},"bg_promotion":{"w":1672,"h":941,"box":null},"bg_demotion":{"w":1672,"h":941,"box":null},"bg_milestone_L7":{"w":1672,"h":941,"box":null},"bg_milestone_L8":{"w":1672,"h":941,"box":null},"bg_record_desk":{"w":1672,"h":941,"box":null},"bg_cert_table":{"w":1672,"h":941,"box":null},"bg_map_desk":{"w":1672,"h":941,"box":null},"destiny_emperor":{"w":1254,"h":1254,"box":null},"destiny_empress":{"w":1254,"h":1254,"box":null},"village_1":{"w":1536,"h":1024,"box":[51,78,1506,949]},"village_2":{"w":1536,"h":1024,"box":[52,46,1514,1024]},"village_3":{"w":1536,"h":1024,"box":[48,9,1502,1007]},"event_conquest_01":{"w":696,"h":392,"box":null},"event_conquest_02":{"w":696,"h":392,"box":null},"event_conquest_03":{"w":696,"h":392,"box":null},"event_conquest_04":{"w":696,"h":392,"box":null},"event_conquest_05":{"w":696,"h":392,"box":null},"event_conquest_06":{"w":696,"h":392,"box":null},"event_conquest_07":{"w":696,"h":392,"box":null},"event_conquest_08":{"w":696,"h":392,"box":null},"event_domain_01":{"w":696,"h":392,"box":null},"event_domain_02":{"w":696,"h":392,"box":null},"event_domain_03":{"w":696,"h":392,"box":null},"event_domain_04":{"w":696,"h":392,"box":null},"event_domain_05":{"w":696,"h":392,"box":null},"event_domain_06":{"w":696,"h":392,"box":null},"event_domain_07":{"w":696,"h":392,"box":null},"event_domain_08":{"w":696,"h":392,"box":null},"event_domain_09":{"w":696,"h":392,"box":null},"event_domain_10":{"w":696,"h":392,"box":null},"event_domain_11":{"w":696,"h":392,"box":null},"event_domain_12":{"w":696,"h":392,"box":null},"event_domain_13":{"w":696,"h":392,"box":null},"event_domain_14":{"w":696,"h":392,"box":null},"event_domain_15":{"w":696,"h":392,"box":null},"event_domain_16":{"w":696,"h":392,"box":null},"event_domain_17":{"w":696,"h":392,"box":null},"event_domain_18":{"w":696,"h":392,"box":null},"event_domain_19":{"w":696,"h":392,"box":null},"event_domain_20":{"w":696,"h":392,"box":null},"event_domain_21":{"w":696,"h":392,"box":null},"event_domain_22":{"w":696,"h":392,"box":null},"event_domain_23":{"w":696,"h":392,"box":null},"event_domain_24":{"w":696,"h":392,"box":null},"event_domain_25":{"w":696,"h":392,"box":null},"event_village_01":{"w":696,"h":392,"box":null},"event_village_02":{"w":696,"h":392,"box":null},"event_village_03":{"w":696,"h":392,"box":null},"event_village_04":{"w":696,"h":392,"box":null},"event_village_05":{"w":696,"h":392,"box":null},"event_village_06":{"w":696,"h":392,"box":null},"event_village_07":{"w":696,"h":392,"box":null},"event_village_08":{"w":696,"h":392,"box":null},"event_village_09":{"w":696,"h":392,"box":null},"event_village_10":{"w":696,"h":392,"box":null},"event_village_11":{"w":696,"h":392,"box":null},"event_village_12":{"w":696,"h":392,"box":null},"event_village_13":{"w":696,"h":392,"box":null},"event_village_14":{"w":696,"h":392,"box":null},"event_village_15":{"w":696,"h":392,"box":null},"event_village_16":{"w":696,"h":392,"box":null},"event_village_17":{"w":696,"h":392,"box":null},"event_village_18":{"w":696,"h":392,"box":null},"event_village_19":{"w":696,"h":392,"box":null},"event_village_20":{"w":696,"h":392,"box":null},"event_village_21":{"w":696,"h":392,"box":null},"event_village_22":{"w":696,"h":392,"box":null},"event_village_23":{"w":696,"h":392,"box":null},"event_village_24":{"w":696,"h":392,"box":null},"event_village_25":{"w":696,"h":392,"box":null}};
 
 const GAME_VERSION = "2.0 (Stage 5 build)";
-const BUILD_DATE = "26 November 2026";
+const BUILD_DATE = "27 November 2026";
 const SAVE_SERVICE_URL = "https://script.google.com/macros/s/AKfycbxQ8brOldRcPiwjljNp2LKAf3Zm6p2qzBEVbcJ0hSO6oFCgRVYBTAFED1DK1EwrrhhNCw/exec";     // the save service (3.7), from build/targets.json
 const PARENT_PANEL_URL = "https://realmpromo.eiprojecthq.com/";     // the parent panel page (A2.7), from build/targets.json
 </script>
@@ -1199,16 +1200,16 @@ const PARENT_PANEL_URL = "https://realmpromo.eiprojecthq.com/";     // the paren
 
   // ---------------------------------------------------------------- countdown (3.5)
   // Single source for the countdown values: edit only this table to make the game harder or easier.
-  // One countdown per Level, in seconds (brief Q, 3.5).
+  // One countdown per Level, in seconds (brief Q, 3.5; the B1 values, from watching the players).
   const COUNTDOWN_BY_LEVEL = [
-    { levels: [0], seconds: 5.0 },
-    { levels: [1], seconds: 4.5 },
-    { levels: [2], seconds: 4.0 },
-    { levels: [3], seconds: 3.5 },
-    { levels: [4], seconds: 3.0 },
-    { levels: [5], seconds: 2.5 },
-    { levels: [6], seconds: 2.0 },
-    { levels: [7], seconds: 1.5 },
+    { levels: [0], seconds: 4.0 },
+    { levels: [1], seconds: 3.5 },
+    { levels: [2], seconds: 3.0 },
+    { levels: [3], seconds: 2.5 },
+    { levels: [4], seconds: 2.0 },
+    { levels: [5], seconds: 1.8 },
+    { levels: [6], seconds: 1.5 },
+    { levels: [7], seconds: 1.3 },
     { levels: [8], seconds: 1.0 },
   ];
 
@@ -4484,7 +4485,7 @@ const Certificate = (function () {
    Title on parchment: plain navy lettering (Indy's title rule, 13 Oct).
    Sections: player header (avatar shown once, title, name, Level, Change Avatar), Player Profile (name,
    destiny, game mode), Campaign Progress (Realm Control, highest title, View Certificate), Realm Mastery
-   (battles, questions, the seven village totals) and Progress Management (Sign Out, the save status, and the
+   (battles, questions, the seven village totals) and Progress Management (the save status, Sign Out, and the
    subdued Reset or Restart Campaign). No accuracy, no Swift / Steady / Incorrect totals, no progress bar.
    The name changes only when a new campaign starts (A2.8), so there is no Change Name (Version 2).
    ===================================================================== */
@@ -4501,8 +4502,9 @@ const Certificate = (function () {
   }
   const row = (label, value, extra) => el("div", { class: "record-row" }, [el("span", { class: "record-label", text: label }), value].concat(extra || []));
 
-  // A2.13 save status (3.7): the brief's words. Game-generated, so in the handwritten face; kept up to date while the
-  // Record is showing, as background saves are answered (sync.js).
+  // A2.13 save status (3.7): the first line of Progress Management, laid out like the other entries (B2): the label
+  // "Status:" in the serif, then the brief's words in the handwritten face. Kept up to date while the Record is showing,
+  // as background saves are answered (sync.js).
   const SAVE_STATUS = { online: "Saved online", local: "Saved on this computer only" };
   document.addEventListener("realmsavestatus", (e) => {
     const line = document.getElementById("record-save-status");
@@ -4554,8 +4556,8 @@ const Certificate = (function () {
     const status = Sync.status();
     const signOut = el("button", { class: "btn record-btn", id: "btn-sign-out", text: "Sign Out" });
     const manage = section("rec-manage", "Progress Management", [
+      row("Status:", hand("", SAVE_STATUS[status], "record-save-status")),
       el("div", { class: "record-buttons single" }, signOut),
-      el("p", { class: "record-save-status" }, hand("", SAVE_STATUS[status], "record-save-status")),
       UI.divider("short"),
       el("button", { class: "btn record-subdued", id: "btn-new-campaign", onclick: () => Game.resetCampaign(word), text: word === "Restart" ? "Restart Campaign" : "Reset Campaign" }),
       el("p", { class: "record-note", text: "Replaces current progress after confirmation." }),
@@ -4622,7 +4624,7 @@ const Game = (function () {
   const NAME_TAKEN = "That name is already taken. Please choose another.";
   // A2.13 Sign Out: the confirmation reminds the player about the save code; the warning is the brief's, word for word.
   const SIGN_OUT_REMINDER = "You’ll need your save code to sign in again.";
-  const NOT_SENT_YET = "Your latest progress hasn’t reached the Realm yet. If you sign out now, it stays on this computer and is sent when you next sign in here.";
+  const NOT_SENT_YET = "Your latest progress hasn’t reached the Realm yet. If you sign out now, it stays on this computer and is sent when you next sign in on this computer.";
 
   /** Profile Setup's choices so far (A2.8). `hero` is set once Stage 1 has succeeded in this setup: the hero's name and
    *  the save code chosen (kept in memory only, for the save code screen and for Back), and `record` is the hero's
